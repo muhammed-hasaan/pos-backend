@@ -3,6 +3,7 @@ import User from "../models/User.model.js"
 import Order from "../models/Order.model.js"
 import Product from "../models/Product.model.js"
 import Category from "../models/Category.model.js"
+import bcrypt from "bcryptjs"
 
 // Get all shops (admin only)
 export const getAllShops = async (req, res, next) => {
@@ -143,19 +144,26 @@ export const createShop = async (req, res, next) => {
 }
 
 // Update shop
+
+
 export const updateShop = async (req, res, next) => {
   try {
     const { id } = req.params
     const updates = { ...req.body }
 
-    // Remove password from updates if empty
-    if (!updates.password) {
+    // If password is provided and not empty → hash it
+    if (updates.password && updates.password.trim() !== "") {
+      const salt = await bcrypt.genSalt(10)
+      updates.password = await bcrypt.hash(updates.password, salt)
+    } else {
       delete updates.password
     }
 
-    const shop = await User.findByIdAndUpdate(id, { $set: updates }, { new: true, runValidators: true }).select(
-      "-password",
-    )
+    const shop = await User.findByIdAndUpdate(
+      id,
+      { $set: updates },
+      { new: true, runValidators: true }
+    ).select("-password")
 
     if (!shop) {
       return res.status(404).json({
@@ -173,6 +181,7 @@ export const updateShop = async (req, res, next) => {
     next(error)
   }
 }
+
 
 // Delete shop
 export const deleteShop = async (req, res, next) => {

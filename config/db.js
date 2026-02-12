@@ -1,8 +1,7 @@
 // Database Connection Configuration
 import mongoose from "mongoose"
 
-const MONGODB_URI =
-  process.env.MONGODB_URI || "mongodb+srv://alamgirpos:alamgirpos@cluster0.rdb6yxn.mongodb.net/pos_system"
+const MONGODB_URI = "mongodb+srv://alamgirpos:alamgirpos@cluster0.rdb6yxn.mongodb.net/pos_system"
 
 const connectDB = async () => {
   try {
