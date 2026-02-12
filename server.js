@@ -34,7 +34,7 @@ connectDB()
 
 // Middleware
 app.use(cors({
-    origin: "http://localhost:3000",
+    origin: "https://pos-fruntend.vercel.app",
     credentials: true,
 }))
 app.use(morgan("dev"))
