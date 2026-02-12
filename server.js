@@ -63,7 +63,7 @@ let connectedPrinter = null
 // ============================
 // 🖨️ POS ORDER PRINT API
 // ============================
-app.post('/', (req, res) => {
+app.get('/', (req, res) => {
   return res.status(200).send("backend is running")
 });
 app.post('/api/print/pos-receipt', (req, res) => {
