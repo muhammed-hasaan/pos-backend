@@ -200,8 +200,9 @@ export const processPendingOrder = async (req, res, next) => {
     }
 
     // ============================
-    // 🖨️ PRINT KITCHEN RECEIPT
+    // 🖨️ PRINT KITCHEN RECEIPT (Wait for print to complete)
     // ============================
+    let printCompleted = true
     if (printerName && printerName.trim() !== '') {
       try {
         const line = "=".repeat(48)
@@ -283,14 +284,30 @@ export const processPendingOrder = async (req, res, next) => {
         // PowerShell command to print
         const psCommand = `$text = @"\n${receipt}\n"@; $text | Out-Printer -Name "${printerName}"`
 
-        const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psCommand])
+        // Wait for print process to complete before responding
+        await new Promise((resolve, reject) => {
+          const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psCommand])
 
-        ps.on('close', (code) => {
-          if (code === 0) {
-            console.log(`✅ Kitchen receipt printed for order ${order.orderNumber}`)
-          } else {
-            console.log(`⚠️ Printing issue for order ${order.orderNumber}, but processing continues`)
-          }
+          ps.on('close', (code) => {
+            if (code === 0) {
+              console.log(`✅ Kitchen receipt printed for order ${order.orderNumber}`)
+              resolve()
+            } else {
+              console.log(`⚠️ Printing issue for order ${order.orderNumber}, but processing continues`)
+              resolve() // Still resolve even on error - don't block order processing
+            }
+          })
+
+          ps.on('error', (err) => {
+            console.error(`Print process error for order ${order.orderNumber}:`, err.message)
+            resolve() // Still resolve even on error
+          })
+
+          // Timeout after 5 seconds to prevent hanging
+          setTimeout(() => {
+            console.log(`⏱️ Print timeout for order ${order.orderNumber}, continuing...`)
+            resolve()
+          }, 5000)
         })
       } catch (printError) {
         console.error('Print error (non-blocking):', printError.message)
@@ -298,7 +315,7 @@ export const processPendingOrder = async (req, res, next) => {
       }
     }
 
-    // Return success response
+    // Return success response AFTER print completes
     res.status(200).json({
       success: true,
       message: "Order sent to preparation workflow",
