@@ -34,8 +34,10 @@ connectDB()
 
 // Middleware
 app.use(cors({
-    origin: "https://pos-fruntend.vercel.app",
+    origin: ["http://localhost:3000", "http://localhost:3001", "http://127.0.0.1:3000"],
     credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"]
 }))
 app.use(morgan("dev"))
 app.use(express.json({ limit: "50mb" }))

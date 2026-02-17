@@ -6,7 +6,7 @@ const orderItemSchema = new mongoose.Schema(
     productId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Product",
-      required: true,
+      required: false, // Optional for online orders from website
     },
     name: String,
     price: Number,
@@ -30,7 +30,8 @@ const orderSchema = new mongoose.Schema(
     shopId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true,
+      required: false, // Optional - can be "website" string for online orders
+      default: null,
     },
     items: [orderItemSchema],
     subtotal: {
@@ -51,7 +52,7 @@ const orderSchema = new mongoose.Schema(
     },
     paymentMethod: {
       type: String,
-      enum: ["cash", "card"],
+      enum: ["cash", "card", "pending"],
       default: "cash",
     },
     amountReceived: {
@@ -67,6 +68,10 @@ const orderSchema = new mongoose.Schema(
       default: "",
     },
     customerPhone: {
+      type: String,
+      default: "",
+    },
+    customerEmail: {
       type: String,
       default: "",
     },

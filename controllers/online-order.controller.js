@@ -30,3 +30,79 @@ export const getOnlineOrders = async (req, res, next) => {
     next(error)
   }
 }
+
+// Create online order (from website)
+export const createOnlineOrder = async (req, res, next) => {
+  try {
+    const { items, subtotal, tax, total, customerName, customerPhone, customerEmail, deliveryAddress, paymentMethod, status } = req.body
+
+    // Validate required fields
+    if (!items || items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Order must contain at least one item",
+      })
+    }
+
+    if (!customerName || !customerPhone) {
+      return res.status(400).json({
+        success: false,
+        message: "Customer name and phone are required",
+      })
+    }
+
+    // Generate unique order number
+    const orderNumber = `WEB-${Date.now()}-${Math.floor(Math.random() * 1000)}`
+
+    // Create order
+    const order = new Order({
+      orderNumber,
+      shopId: null, // No shop for website orders
+      items: items.map((item) => ({
+        productId: item.productId || null,
+        name: item.name,
+        price: item.price,
+        quantity: item.quantity,
+        total: item.price * item.quantity,
+      })),
+      subtotal: parseFloat(subtotal),
+      tax: parseFloat(tax),
+      total: parseFloat(total),
+      customerName,
+      customerPhone,
+      customerEmail: customerEmail || "",
+      deliveryAddress: deliveryAddress || "",
+      paymentMethod: paymentMethod || "cash", // Default to "cash" not "pending"
+      status: status || "pending",
+      orderType: "online",
+      onlineStatus: "pending",
+    })
+
+    await order.save()
+
+    res.status(201).json({
+      success: true,
+      message: "Order created successfully",
+      order,
+      orderNumber: order.orderNumber,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Get all online orders (no auth required for now - can add auth later)
+export const getAllOnlineOrders = async (req, res, next) => {
+  try {
+    const orders = await Order.find({ orderType: "online" }).sort({ createdAt: -1 })
+
+    res.json({
+      success: true,
+      orders,
+      count: orders.length,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
