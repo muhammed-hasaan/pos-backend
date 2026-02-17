@@ -178,8 +178,7 @@ export const processPendingOrder = async (req, res, next) => {
     const order = await Order.findById(orderId)
     if (!order) {
       return res.status(404).json({ 
-        success: false, 
-        error: "Order not found" 
+        success: false, error: "Order not found" 
       })
     }
 
