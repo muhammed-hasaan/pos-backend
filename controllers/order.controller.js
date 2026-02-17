@@ -2,6 +2,7 @@
 import Order from "../models/Order.model.js"
 import Product from "../models/Product.model.js"
 import { generateOrderNumber } from "../utils/helpers.js"
+import { spawn } from "child_process"
 
 // Get orders
 export const getOrders = async (req, res, next) => {
@@ -156,5 +157,161 @@ export const updateOrder = async (req, res, next) => {
     })
   } catch (error) {
     next(error)
+  }
+}
+
+// Process Pending Order (Kitchen/Preparation Workflow) with Receipt Printing
+// Similar to /api/print/pos-receipt - accepts order data and initiates preparation with automatic printing
+export const processPendingOrder = async (req, res, next) => {
+  try {
+    const { orderId, orderData, preparationNotes, printerName } = req.body
+
+    // Validation
+    if (!orderId) {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Order ID is required" 
+      })
+    }
+
+    // Find the order
+    const order = await Order.findById(orderId)
+    if (!order) {
+      return res.status(404).json({ 
+        success: false, 
+        error: "Order not found" 
+      })
+    }
+
+    // Check if order is pending
+    if (order.status !== "pending" && order.onlineStatus !== "pending") {
+      return res.status(400).json({ 
+        success: false, 
+        error: "Order is not in pending status" 
+      })
+    }
+
+    // Log the preparation request
+    console.log(`🔔 Processing Pending Order: ${order.orderNumber}`)
+    console.log(`   Customer: ${order.customerName}`)
+    console.log(`   Items: ${order.items?.length || 0}`)
+    if (preparationNotes) {
+      console.log(`   Notes: ${preparationNotes}`)
+    }
+
+    // ============================
+    // 🖨️ PRINT KITCHEN RECEIPT
+    // ============================
+    if (printerName && printerName.trim() !== '') {
+      try {
+        const line = "=".repeat(48)
+        const dash = "-".repeat(48)
+
+        let receipt = ''
+
+        // Store Header
+        receipt += `        KITCHEN ORDER\n`
+        receipt += `${line}\n`
+
+        // Order Info
+        receipt += `Order #: ${order.orderNumber}\n`
+        receipt += `Date: ${(() => {
+          const now = new Date()
+          const day = now.getDate()
+          const month = now.getMonth() + 1
+          const year = now.getFullYear()
+          let hours = now.getHours()
+          const minutes = now.getMinutes().toString().padStart(2, '0')
+          const seconds = now.getSeconds().toString().padStart(2, '0')
+          const ampm = hours >= 12 ? 'PM' : 'AM'
+          hours = hours % 12
+          hours = hours ? hours : 12
+          return `${day}-${month}-${year} ${hours}:${minutes}:${seconds} ${ampm}\n`
+        })()}`
+        
+        receipt += `Customer: ${order.customerName}\n`
+        receipt += `Phone: ${order.customerPhone}\n`
+        receipt += `${line}\n`
+
+        // Items Header
+        receipt += `Item                 Qty    Price\n`
+        receipt += `${dash}\n`
+
+        // Items
+        const itemNameWidth = 20
+        const qtyWidth = 5
+        const priceWidth = 10
+
+        order.items.forEach(item => {
+          let name = item.name
+          if (name.length > itemNameWidth) {
+            name = name.slice(0, itemNameWidth - 1)
+          }
+          const qty = item.quantity.toString().padStart(qtyWidth, ' ')
+          const price = (item.price * item.quantity).toFixed(2).padStart(priceWidth, ' ')
+          receipt += `${name.padEnd(itemNameWidth, ' ')}${qty}${price}\n`
+        })
+
+        receipt += `${dash}\n`
+
+        // Totals
+        receipt += `TOTAL:${' '.repeat(22)} Rs.${order.total.toFixed(2)}\n`
+        receipt += `${line}\n`
+
+        // Delivery Address if available
+        if (order.deliveryAddress) {
+          receipt += `Delivery Address:\n`
+          receipt += `${order.deliveryAddress}\n`
+          receipt += `${line}\n`
+        }
+
+        // Preparation Notes if available
+        if (preparationNotes) {
+          receipt += `Special Instructions:\n`
+          receipt += `${preparationNotes}\n`
+          receipt += `${line}\n`
+        }
+
+        // Footer
+        receipt += `       START PREPARATION\n`
+        receipt += `${line}\n\n`
+        receipt += `Powered By : https://hashapples.com/`
+
+        // Windows line breaks
+        receipt = receipt.replace(/\n/g, '\r\n')
+
+        // PowerShell command to print
+        const psCommand = `$text = @"\n${receipt}\n"@; $text | Out-Printer -Name "${printerName}"`
+
+        const ps = spawn('powershell.exe', ['-NoProfile', '-Command', psCommand])
+
+        ps.on('close', (code) => {
+          if (code === 0) {
+            console.log(`✅ Kitchen receipt printed for order ${order.orderNumber}`)
+          } else {
+            console.log(`⚠️ Printing issue for order ${order.orderNumber}, but processing continues`)
+          }
+        })
+      } catch (printError) {
+        console.error('Print error (non-blocking):', printError.message)
+        // Don't block order processing if printing fails
+      }
+    }
+
+    // Return success response
+    res.status(200).json({
+      success: true,
+      message: "Order sent to preparation workflow",
+      orderNumber: order.orderNumber,
+      status: order.status || order.onlineStatus,
+      processedAt: new Date().toISOString(),
+    })
+
+  } catch (error) {
+    console.error("Error processing pending order:", error)
+    res.status(500).json({
+      success: false,
+      error: error.message || "Failed to process pending order"
+    })
   }
 }
