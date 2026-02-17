@@ -201,6 +201,7 @@ export const processPendingOrder = async (req, res, next) => {
 
     // ============================
     // 🖨️ PRINT KITCHEN RECEIPT (Wait for print to complete)
+    // 🖨️ PRINT KITCHEN RECEIPT (Wait for print to complete)
     // ============================
     let printCompleted = true
     if (printerName && printerName.trim() !== '') {
