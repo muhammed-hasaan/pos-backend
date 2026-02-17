@@ -106,3 +106,42 @@ export const getAllOnlineOrders = async (req, res, next) => {
   }
 }
 
+// Update online order status
+export const updateOnlineOrderStatus = async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+
+    // Validate status
+    const validStatuses = ["pending", "preparing", "ready", "delivered"]
+    if (!status || !validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Must be one of: pending, preparing, ready, delivered",
+      })
+    }
+
+    // Find and update the order
+    const order = await Order.findByIdAndUpdate(
+      id,
+      { onlineStatus: status, status: status },
+      { new: true }
+    )
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found",
+      })
+    }
+
+    res.json({
+      success: true,
+      message: `Order status updated to ${status}`,
+      order,
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+

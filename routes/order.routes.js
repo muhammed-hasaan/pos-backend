@@ -6,23 +6,20 @@ import { validateOrder } from "../middleware/validate.middleware.js"
 
 const router = express.Router()
 
-// All routes require authentication
-router.use(authenticate)
+// GET /api/orders (requires authentication)
+router.get("/", authenticate, getOrders)
 
-// GET /api/orders
-router.get("/", getOrders)
+// GET /api/orders/:id (requires authentication)
+router.get("/:id", authenticate, getOrderById)
 
-// GET /api/orders/:id
-router.get("/:id", getOrderById)
+// POST /api/orders (requires authentication + shop role)
+router.post("/", authenticate, isShop, validateOrder, createOrder)
 
-// POST /api/orders (shop only)
-router.post("/", isShop, validateOrder, createOrder)
+// PUT /api/orders/:id (requires authentication + shop role)
+router.put("/:id", authenticate, isShop, updateOrder)
 
-// PUT /api/orders/:id (shop only)
-router.put("/:id", isShop, updateOrder)
-
-// POST /api/orders/:id/process-pending (public - for kitchen workflow)
-// Similar to /api/print/pos-receipt - accepts order data and initiates preparation
+// POST /api/orders/:id/process-pending (PUBLIC - for kitchen workflow, no authentication needed)
+// This is called from POS terminal with api2 (localhost)
 router.post("/:id/process-pending", processPendingOrder)
 
 export default router

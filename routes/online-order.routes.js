@@ -1,6 +1,6 @@
 // Online Order Routes
 import express from "express"
-import { getOnlineOrders, createOnlineOrder, getAllOnlineOrders } from "../controllers/online-order.controller.js"
+import { getOnlineOrders, createOnlineOrder, getAllOnlineOrders, updateOnlineOrderStatus } from "../controllers/online-order.controller.js"
 import { authenticate, isShop } from "../middleware/auth.middleware.js"
 
 const router = express.Router()
@@ -13,5 +13,8 @@ router.get("/all", getAllOnlineOrders)
 
 // POST /api/online-orders (create online order from website)
 router.post("/", createOnlineOrder)
+
+// PATCH /api/online-orders/:id/status (update order status)
+router.patch("/:id/status", updateOnlineOrderStatus)
 
 export default router
